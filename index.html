@@ -1,0 +1,330 @@
+<!-- Product gallery: single-file HTML/CSS/JS
+     - 3 product cards
+     - hover effects, smooth animations (fade/slide/scale)
+     - theme toggle (light/dark) persisted in localStorage
+     - accessible and responsive
+     - Only HTML/CSS/JS (no frameworks)
+-->
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Galerie produits — Clair / Foncé</title>
+  <meta name="description" content="Galerie de présentation de produits avec animations fluides et bascule thème (clair / foncé) — HTML/CSS/JS pur" />
+
+  <style>
+    /* ============ VARIABLES THEME ============ */
+    :root{
+      --bg: #0f1724; /* dark fallback */
+      --panel: #0b1220;
+      --muted: #9aa4b2;
+      --text: #e6eef6;
+      --accent: #7c5cff;
+      --glass: rgba(255,255,255,0.04);
+      --card-shadow: 0 8px 30px rgba(2,6,23,0.6);
+      --radius: 14px;
+      --transition: 300ms cubic-bezier(.2,.9,.2,1);
+      --max-width: 1100px;
+    }
+
+    /* light theme -- toggled with .light on <html> */
+    html.light{
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --muted: #475569;
+      --text: #0b1020;
+      --accent: #6f5eff;
+      --glass: rgba(11,16,32,0.03);
+      --card-shadow: 0 10px 30px rgba(20,24,40,0.08);
+    }
+
+    /* Base reset */
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 400px at 10% 10%, rgba(124,92,255,0.06), transparent 10%), var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      transition: background var(--transition), color var(--transition);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:clamp(16px, 3vw, 48px);
+      min-height:100vh;
+    }
+
+    /* Page container acts as the single section hero */
+    .stage{
+      width:100%;
+      max-width:var(--max-width);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 25%), var(--panel);
+      border-radius:20px;
+      padding:clamp(20px, 3.5vw, 40px);
+      box-shadow:var(--card-shadow);
+      backdrop-filter: blur(6px);
+      overflow:hidden;
+      position:relative;
+      transition:background var(--transition), box-shadow var(--transition);
+    }
+
+    header.hero{
+      display:flex;
+      gap:16px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:20px;
+    }
+
+    .brand{
+      display:flex;
+      gap:14px;
+      align-items:center;
+    }
+    .logo{
+      width:56px;height:56px;border-radius:12px;display:grid;place-items:center;
+      background:linear-gradient(135deg,var(--accent), #3ec5ff 120%);
+      color:white;font-weight:700;font-size:18px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    }
+    .title{
+      line-height:1; 
+    }
+    .title h1{margin:0;font-size:1.1rem}
+    .title p{margin:0;font-size:0.85rem;color:var(--muted)}
+
+    /* Theme toggle */
+    .controls{display:flex;gap:8px;align-items:center}
+    .toggle{
+      appearance:none;border:0;padding:8px 12px;border-radius:999px;cursor:pointer;
+      background:var(--glass);color:var(--text);font-weight:600;
+      transition:transform var(--transition), background var(--transition);
+    }
+    .toggle:active{transform:scale(.98)}
+
+    /* Gallery grid */
+    .gallery{
+      display:grid;
+      gap:18px;
+      grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+      align-items:start;
+    }
+
+    /* Card */
+    .card{
+      border-radius:var(--radius);
+      overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%), rgba(255,255,255,0.02);
+      box-shadow: 0 6px 20px rgba(2,6,23,0.45);
+      transition: transform var(--transition), box-shadow var(--transition), filter var(--transition);
+      transform-origin: center bottom;
+      will-change: transform;
+      cursor:default;
+      opacity:0; /* start hidden, fade-in with JS class */
+    }
+
+    .card:focus-within, .card:hover{
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 18px 40px rgba(2,6,23,0.5);
+      filter: saturate(1.05);
+    }
+
+    .media{
+      position:relative;height:180px;display:block;overflow:hidden;background:linear-gradient(120deg, rgba(255,255,255,0.03), rgba(0,0,0,0.03));
+    }
+    .media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform var(--transition)}
+    .card:hover .media img{transform: scale(1.06) translateY(-6px)}
+
+    .badge{
+      position:absolute;left:12px;top:12px;padding:6px 10px;border-radius:999px;font-weight:700;font-size:13px;background:linear-gradient(90deg,var(--accent), #3ec5ff);color:white;box-shadow:0 6px 18px rgba(0,0,0,0.18);
+    }
+
+    .card-body{padding:14px 14px 18px}
+    .product-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .product-title h3{margin:0;font-size:1rem}
+    .price{font-weight:800}
+    .desc{color:var(--muted);font-size:0.9rem;margin-top:8px}
+
+    .actions{display:flex;gap:8px;margin-top:12px}
+    .btn{
+      border:0;padding:10px 12px;border-radius:10px;background:transparent;color:var(--text);cursor:pointer;font-weight:700;
+      transition:background var(--transition), transform var(--transition);
+      display:inline-flex;gap:8px;align-items:center
+    }
+    .btn:active{transform:translateY(1px)}
+    .buy{background:linear-gradient(90deg,var(--accent), #3ec5ff);color:white}
+
+    /* footer subtle */
+    .foot{margin-top:18px;color:var(--muted);font-size:0.85rem;text-align:center}
+
+    /* Fade-in stagger animation (JS adds .visible on stage to trigger) */
+    .card.fade-in{animation:cardEnter .6s var(--transition) both}
+    @keyframes cardEnter{
+      0%{opacity:0;transform:translateY(18px) scale(.995)}
+      100%{opacity:1;transform:translateY(0) scale(1)}
+    }
+
+    /* Accessibility: respect prefers-reduced-motion */
+    @media (prefers-reduced-motion: reduce){
+      *{transition:none !important;animation:none !important}
+    }
+
+    /* Responsive tweaks */
+    @media (max-width:520px){
+      .media{height:150px}
+      .logo{width:48px;height:48px}
+    }
+  </style>
+</head>
+<body>
+  <main class="stage" id="stage" role="main">
+    <header class="hero">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">PG</div>
+        <div class="title">
+          <h1>Samuel — Développeur Frontend</h1>
+          <p>Design web, animations & micro-interactions</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="themeToggle" class="toggle" aria-pressed="false" title="Basculer thème (clair/foncé)">Mode clair</button>
+      </div>
+    </header>
+
+    <section class="gallery" aria-label="Galerie produits">
+
+      <!-- Card 1 -->
+      <article class="card" tabindex="0">
+        <div class="media">
+          <span class="badge">Nouveau</span>
+          <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=7a8c8f48b1a9a1b2a6e6256b2b" alt="Montre minimaliste" />
+        </div>
+        <div class="card-body">
+          <div class="product-title">
+            <h3>Montre Minimaliste</h3>
+            <div class="price">€129</div>
+          </div>
+          <p class="desc">Boîtier acier, bracelet en cuir végétal — design épuré pour usage quotidien.</p>
+
+          <div class="actions">
+            <button class="btn">Voir</button>
+            <button class="btn buy">Acheter</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 2 -->
+      <article class="card" tabindex="0">
+        <div class="media">
+          <span class="badge">-20%</span>
+          <img src="https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=7b2e8a9a1ab0a5d3f3c2d4c8d" alt="Casque audio" />
+        </div>
+        <div class="card-body">
+          <div class="product-title">
+            <h3>Casque Studio</h3>
+            <div class="price">€89</div>
+          </div>
+          <p class="desc">Son clair, isolation passive et confort longue durée pour sessions pro.</p>
+
+          <div class="actions">
+            <button class="btn">Voir</button>
+            <button class="btn buy">Acheter</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 3 -->
+      <article class="card" tabindex="0">
+        <div class="media">
+          <span class="badge">Édition</span>
+          <img src="https://images.unsplash.com/photo-1545239351-1141bd82e8a6?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=5a6f2f8a1b2c3d4e5f6a7b8c" alt="Lampe design" />
+        </div>
+        <div class="card-body">
+          <div class="product-title">
+            <h3>Lampe Halo</h3>
+            <div class="price">€64</div>
+          </div>
+          <p class="desc">Éclairage d'ambiance réglable, matériaux recyclés, très faible consommation.</p>
+
+          <div class="actions">
+            <button class="btn">Voir</button>
+            <button class="btn buy">Acheter</button>
+          </div>
+        </div>
+      </article>
+
+    </section>
+
+    <div class="foot">Cliquez sur une carte ou utilisez tabulation pour la parcourir — appuyez sur le bouton thème pour basculer.</div>
+  </main>
+
+  <script>
+    // THEME TOGGLE: persist in localStorage, update aria-pressed and button text
+    (function(){
+      const html = document.documentElement;
+      const toggle = document.getElementById('themeToggle');
+      const ST_KEY = 'pg_theme';
+
+      function setTheme(theme){
+        if(theme === 'light'){
+          html.classList.add('light');
+          toggle.textContent = 'Mode sombre';
+          toggle.setAttribute('aria-pressed','true');
+        } else {
+          html.classList.remove('light');
+          toggle.textContent = 'Mode clair';
+          toggle.setAttribute('aria-pressed','false');
+        }
+        try{ localStorage.setItem(ST_KEY, theme) }catch(e){}
+      }
+
+      // load saved theme or prefer-color-scheme
+      const saved = (function(){try{return localStorage.getItem(ST_KEY)}catch(e){return null}})();
+      if(saved){ setTheme(saved); }
+      else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches){ setTheme('light') }
+      else{ setTheme('dark') }
+
+      toggle.addEventListener('click', ()=>{
+        const isLight = html.classList.contains('light');
+        setTheme(isLight ? 'dark' : 'light');
+      });
+
+      // Fade-in cards with slight stagger for polish
+      const stage = document.getElementById('stage');
+      const cards = Array.from(document.querySelectorAll('.card'));
+      function reveal(){
+        cards.forEach((c,i)=>{
+          c.style.animationDelay = (i * 90) + 'ms';
+          c.classList.add('fade-in');
+        });
+      }
+
+      // Wait for images to be ready (but don't block too long)
+      const imgs = Array.from(document.images);
+      let loaded = 0;
+      if(imgs.length === 0){ reveal(); }
+      else{
+        imgs.forEach(img => {
+          if(img.complete) { loaded++; if(loaded === imgs.length) reveal(); }
+          else img.addEventListener('load', ()=>{ loaded++; if(loaded === imgs.length) reveal(); });
+          // fail-safe: reveal after 800ms even if some images lag
+          setTimeout(()=>{ reveal(); }, 800);
+        });
+      }
+
+      // Keyboard accessible 'Voir' buttons: simple progressive enhancement
+      document.querySelectorAll('.btn').forEach(b=>{
+        b.addEventListener('keydown', e => {
+          if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); b.click(); }
+        })
+      });
+
+    })();
+  </script>
+</body>
+</html>
